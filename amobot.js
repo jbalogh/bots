@@ -37,8 +37,6 @@ irc.on('message', function(from, to, message) {
         });
     } else if (message == NICK + ': woo') {
         irc.say(to, from + ': awww yeah');
-    } else if (message == NICK + ': meeting?') {
-        irc.say(to, from + ': hell no');
     }
 });
 irc.on('error', function(msg) {

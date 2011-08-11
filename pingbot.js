@@ -3,7 +3,7 @@ var sys = require('sys'),
 
 
 var pingbot = new irc_.Client('irc.mozilla.org', 'pingbot',
-                              {channels: ['#sumodev', '#amo']});
+                              {channels: ['#amo']});
 
 pingbot.on('message', function(from, to, message) {
     if (/pingbot\s*:\s*woo\s*$/.exec(message)) {
