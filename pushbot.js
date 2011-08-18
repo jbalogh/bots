@@ -2,6 +2,7 @@ var sys = require('sys'),
     irc_ = require('irc'),
     exec = require('child_process').exec,
     redis_ = require('redis'),
+    _ = require('./underscore'),
     format = require('./format').format;
 
 
@@ -53,7 +54,13 @@ var logWatcher = (function(){
         if (newStatus.completed && oldStatus.completed) {
             var old = oldStatus.completed, new_ = newStatus.completed;
             if (new_.length > old.length) {
-                pushbot.say(amo, 'Finished: ' + new_.slice(old.length).join(', '));
+                var finished = new_.slice(old.length);
+                var f = _.map(finished, function(x) { return format('{0} ({1}s)', x[0], x[1]);})
+                pushbot.say(amo, 'Finished: ' + f.join(', '));
+                if (_.contains(_.map(finished, _.first), 'deploy_app')) {
+                    pushbot.say(amo, 'krupa: check it');
+                }
+
             }
         }
         oldStatus = newStatus;
@@ -85,12 +92,9 @@ var logWatcher = (function(){
         stat: function() {
         console.log(oldStatus);
             if (oldStatus.queue) {
-                keys = [];
-                for (var key in oldStatus.queue) {
-                    keys.push(key);
-                }
-                pushbot.say(amo, format('Waiting for {task} on {num} machines:',
-                                        {task: oldStatus.task, num: keys.length}));
+                var keys = _.keys(oldStatus.queue);
+                pushbot.say(amo, format('Waiting for {task} on {num} machines since {since}:',
+                                        {since: oldStatus.task[0], task: oldStatus.task[1], num: keys.length}));
                 pushbot.say(amo, keys.join(', '));
             } else {
                 pushbot.say(amo, 'all clear');
