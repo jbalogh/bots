@@ -11,7 +11,7 @@ DATEFMT = '%Y-%m-%d %H:%M:%S'
 state = {
     'task': None,
     'queue': {},
-    'failures': {},
+    'failed': [],
     'completed': [],
 }
 
@@ -41,7 +41,8 @@ def main(stream):
                     pass
                     #print time, msg
             elif kind == 'failed':
-                state['failures'].setdefault(host, []).append((state['task'], text))
+                date, task = state['task']
+                state['failed'].append([date, task, host, text])
     print json.dumps(state)
 
 

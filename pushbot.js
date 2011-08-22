@@ -17,28 +17,30 @@ var amo = '#remora',
 
 pushbot.on('message', function(from, to, message) {
     if (/pushbot\s*:\s*yo/.exec(message)) {
-        if (lastEvent) {
-            pushbot.say(to, from + ': ' + lastEventTime);
-            handle(to, lastEvent);
-        } else {
-            pushbot.say(to, from + ': all quiet over here boss');
-        }
-    } else if (/pushbot\s*:\s*st(at|atus)?/.exec(message)) {
+        pushbot.say(to, from + ': ' + 'hey there');
+    } else if (/pushbot\s*:\s*st(at|atus)?\s*$/.exec(message)) {
         logWatcher.stat();
+    } else if (/pushbot\s*:\s*f(ail|ailed)?\s*$/.exec(message)) {
+        logWatcher.failed();
+    } else if (/pushbot\s*:\s*watch (\S+)\s*$/.exec(message)) {
+        var path = /pushbot\s*:\s*watch (\S+)\s*$/.exec(message)[1]
+        logWatcher.start(path);
+    } else if (/pushbot\s*:\s*stop\s*$/.exec(message)) {
+        logWatcher.stop();
     }
 });
 
 function handle(channel, msg) {
     if (msg.event == 'BEGIN') {
-        pushbot.say(channel, format('holy hell, {who} is pushing zamboni v{zamboni} ' +
-                                    'and vendor v{vendor}!', msg));
+        pushbot.say(channel, format('holy hell, {who} is pushing zamboni {zamboni} ' +
+                                    'and vendor {vendor}!', msg));
         logWatcher.start(msg.zamboni);
     } else if (msg.event == 'PUSH') {
         pushbot.say(channel, format('the push is now going to the webheads!! ' +
-                                    '(v{zamboni}/v{vendor} :{who})', msg));
+                                    '({zamboni}/{vendor} {who})', msg));
     } else if (msg.event == 'DONE') {
-        pushbot.say(channel, format('{who} pushed zamboni v{zamboni} and ' +
-                                    'vendor v{vendor}!!!', msg));
+        pushbot.say(channel, format('{who} pushed zamboni {zamboni} and ' +
+                                    'vendor {vendor}!!!', msg));
         logWatcher.stop();
     }
 }
@@ -63,12 +65,20 @@ var logWatcher = (function(){
 
             }
         }
+        if (newStatus.failed && oldStatus.failed) {
+            var old = oldStatus.failed, new_ = newStatus.failed;
+            if (new_.length > old.length) {
+                var failed = new_.slice(old.length);
+                var f = _.map(failed, function(x) { return format('{0} ({1})', x[1], x[2]);})
+                pushbot.say(amo, 'Failed: ' + f.join(', '));
+            }
+        }
         oldStatus = newStatus;
     };
 
     return {
         start: function(filename) {
-            var path = logURL + filename,
+            var path = filename.indexOf('http://') === 0 ? filename : logURL + filename,
                 cmd = format('curl -s {path} | ./captain.py', {path: path}),
                 check = function() {
                     console.log(cmd);
@@ -90,7 +100,6 @@ var logWatcher = (function(){
             oldStatus = newStatus = {};
         },
         stat: function() {
-        console.log(oldStatus);
             if (oldStatus.queue) {
                 var keys = _.keys(oldStatus.queue);
                 pushbot.say(amo, format('Waiting for {task} on {num} machines since {since}:',
@@ -98,6 +107,12 @@ var logWatcher = (function(){
                 pushbot.say(amo, keys.join(', '));
             } else {
                 pushbot.say(amo, 'all clear');
+            }
+        },
+        failed: function() {
+            if (oldStatus.failed) {
+                var f = _.map(oldStatus.failed, function(x) { return format('{0} ({1} at {2})', x[1], x[2], x[0]);})
+                pushbot.say(amo, 'Failed: ' + f.join(', '));
             }
         }
     };
