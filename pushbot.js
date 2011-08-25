@@ -32,7 +32,7 @@ pushbot.on('message', function(from, to, message) {
 
 function handle(channel, msg) {
     if (msg.event == 'BEGIN') {
-        pushbot.say(channel, format('holy hell, {who} is pushing zamboni {zamboni} ' +
+        pushbot.say(channel, format('listen up, {who} is pushing zamboni {zamboni} ' +
                                     'and vendor {vendor}!', msg));
         logWatcher.start(msg.zamboni);
     } else if (msg.event == 'PUSH') {
@@ -41,6 +41,11 @@ function handle(channel, msg) {
     } else if (msg.event == 'DONE') {
         pushbot.say(channel, format('{who} pushed zamboni {zamboni} and ' +
                                     'vendor {vendor}!!!', msg));
+        logWatcher.stop();
+    } else if (msg.event == 'FAIL') {
+        pushbot.say(channel, format('something terrible happened. check the logs ' +
+                                    '({zamboni}/{vendor} {who})'));
+        logWatcher.check();
         logWatcher.stop();
     }
 }
@@ -79,25 +84,27 @@ var logWatcher = (function(){
     return {
         start: function(filename) {
             var path = filename.indexOf('http://') === 0 ? filename : logURL + filename,
-                cmd = format('curl -s {path} | ./captain.py', {path: path}),
-                check = function() {
-                    console.log(cmd);
-                    exec(cmd, function(error, stdout, stderr) {
-                        if (error) { return console.log(error); }
-                        try {
-                            console.log(stdout);
-                            update(JSON.parse(stdout));
-                        } catch (e) {
-                            console.log(e);
-                        }
-                    });
-                };
-            interval = setInterval(check, 5 * 1000);
-            check();
+                cmd = format('curl -s {path} | ./captain.py', {path: path});
+
+            this.check = function() {
+                console.log(cmd);
+                exec(cmd, function(error, stdout, stderr) {
+                    if (error) { return console.log(error); }
+                    try {
+                        console.log(stdout);
+                        update(JSON.parse(stdout));
+                    } catch (e) {
+                        console.log(e);
+                    }
+                });
+            };
+            interval = setInterval(this.check, 5 * 1000);
+            this.check();
         },
         stop: function() {
             clearInterval(interval);
             oldStatus = newStatus = {};
+            delete this.check;
         },
         stat: function() {
             if (oldStatus.queue) {
