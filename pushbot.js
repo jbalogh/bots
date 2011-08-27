@@ -9,26 +9,23 @@ var sys = require('sys'),
 
 var options = nomnom.opts({
     channel: {
-        flag: true,
         default: '#remora',
         help: 'irc channel'
     },
     name: {
-        flag: true,
         default: 'pushbot',
         help: 'bot name'
     },
     pubsub: {
-        flag: true,
         default: 'deploy.addons',
         help: 'redis pubsub channel'
     },
     logs: {
-        flag: true,
         default: '/addons-chief/logs/',
         help: 'relative path to the chief logs'
     },
     quiet: {
+        flag: true,
         default: false,
         help: "don't tell krupa to check it"
     }
@@ -115,12 +112,12 @@ var logWatcher = (function(){
         oldStatus = newStatus;
     };
 
-    return {
+    var self = {
         start: function(filename) {
             var path = filename.indexOf('http://') === 0 ? filename : logURL + filename,
                 cmd = format('curl -s {path} | ./captain.py', {path: path});
 
-            this.check = function() {
+            self.check = function() {
                 console.log(cmd);
                 exec(cmd, function(error, stdout, stderr) {
                     if (error) { return console.log(error); }
@@ -132,14 +129,14 @@ var logWatcher = (function(){
                     }
                 });
             };
-            interval = setInterval(this.check, 5 * 1000);
-            this.check();
+            interval = setInterval(self.check, 5 * 1000);
+            self.check();
         },
         stop: function() {
             clearInterval(interval);
-            this.check();
+            self.check();
             oldStatus = newStatus = {};
-            delete this.check;
+            delete self.check;
         },
         stat: function() {
             if (oldStatus.queue) {
@@ -158,6 +155,7 @@ var logWatcher = (function(){
             }
         }
     };
+    return self;
 })();
 
 
