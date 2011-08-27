@@ -66,7 +66,8 @@ function handle(channel, msg) {
     if (msg.event == 'BEGIN') {
         pushbot.say(channel, format('listen up, {who} is pushing zamboni {zamboni} ' +
                                     'and vendor {vendor}!', msg));
-        logWatcher.start(msg.zamboni);
+        // If we push origin/master the logfile is name origin.master.
+        logWatcher.start(msg.zamboni.replace('/', '.'));
     } else if (msg.event == 'PUSH') {
         pushbot.say(channel, format('the push is now going to the webheads!! ' +
                                     '({zamboni}/{vendor} {who})', msg));
