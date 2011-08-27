@@ -2,31 +2,66 @@ var sys = require('sys'),
     irc_ = require('irc'),
     exec = require('child_process').exec,
     redis_ = require('redis'),
-    _ = require('./underscore'),
+    _ = require('underscore'),
+    nomnom = require('nomnom'),
     format = require('./format').format;
 
 
-var amo = '#remora',
-    pushbot = new irc_.Client('irc.mozilla.org', 'pushbot',
+var options = nomnom.opts({
+    channel: {
+        flag: true,
+        default: '#remora',
+        help: 'irc channel'
+    },
+    name: {
+        flag: true,
+        default: 'pushbot',
+        help: 'bot name'
+    },
+    pubsub: {
+        flag: true,
+        default: 'deploy.addons',
+        help: 'redis pubsub channel'
+    },
+    logs: {
+        flag: true,
+        default: '/addons-chief/logs/',
+        help: 'relative path to the chief logs'
+    },
+    quiet: {
+        default: false,
+        help: "don't tell krupa to check it"
+    }
+}).parseArgs();
+
+console.log(options);
+
+var amo = options.channel,
+    me = options.name,
+    pushbot = new irc_.Client('irc.mozilla.org', me,
                               {channels: [amo]}),
-    redis = redis_.createClient(6379, 'mradm02'),
-    logURL = 'http://mradm02:9999/log/',
+    redis = redis_.createClient(6382, '10.8.83.29'),
+    logURL = 'http://addonsadm.private.phx1.mozilla.com' + options.logs,
     lastEvent,
     lastEventTime;
 
 
 pushbot.on('message', function(from, to, message) {
-    if (/pushbot\s*:\s*yo/.exec(message)) {
-        pushbot.say(to, from + ': ' + 'hey there');
-    } else if (/pushbot\s*:\s*st(at|atus)?\s*$/.exec(message)) {
-        logWatcher.stat();
-    } else if (/pushbot\s*:\s*f(ail|ailed)?\s*$/.exec(message)) {
-        logWatcher.failed();
-    } else if (/pushbot\s*:\s*watch (\S+)\s*$/.exec(message)) {
-        var path = /pushbot\s*:\s*watch (\S+)\s*$/.exec(message)[1]
-        logWatcher.start(path);
-    } else if (/pushbot\s*:\s*stop\s*$/.exec(message)) {
-        logWatcher.stop();
+    var msg;
+    if (msg = RegExp('^' + me + '\\s*:\\s*(.*?)\\s*$').exec(message)) {
+        msg = msg[1]
+        if (msg == 'yo') {
+            pushbot.say(to, from + ': ' + 'hey there');
+        } else if (/^st(at|atus)?$/.exec(msg)) {
+            logWatcher.stat();
+        } else if (/f(ail|ailed)?$/.exec(msg)) {
+            logWatcher.failed();
+        } else if (/watch (\S+)$/.exec(msg)) {
+            var path = /watch (\S+)$/.exec(msg)[1]
+            logWatcher.start(path);
+        } else if (msg == 'stop') {
+            logWatcher.stop();
+        }
     }
 });
 
@@ -45,7 +80,6 @@ function handle(channel, msg) {
     } else if (msg.event == 'FAIL') {
         pushbot.say(channel, format('something terrible happened. check the logs ' +
                                     '({zamboni}/{vendor} {who})'));
-        logWatcher.check();
         logWatcher.stop();
     }
 }
@@ -64,7 +98,7 @@ var logWatcher = (function(){
                 var finished = new_.slice(old.length);
                 var f = _.map(finished, function(x) { return format('{0} ({1}s)', x[0], x[1]);})
                 pushbot.say(amo, 'Finished: ' + f.join(', '));
-                if (_.contains(_.map(finished, _.first), 'deploy_app')) {
+                if (!options.quiet && _.contains(_.map(finished, _.first), 'deploy_app')) {
                     pushbot.say(amo, 'krupa: check it');
                 }
 
@@ -103,6 +137,7 @@ var logWatcher = (function(){
         },
         stop: function() {
             clearInterval(interval);
+            this.check();
             oldStatus = newStatus = {};
             delete this.check;
         },
@@ -133,4 +168,4 @@ redis.on('message', function(channel, message) {
     lastEventTime = new Date;
     handle(amo, msg);
 });
-redis.subscribe('deploy.amo');
+redis.subscribe(options.pubsub);
