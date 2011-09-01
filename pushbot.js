@@ -85,7 +85,8 @@ function handle(channel, msg) {
 var logWatcher = (function(){
     var oldStatus = {},
         newStatus = {},
-        interval;
+        interval,
+        timeToDie;
 
     var update = function(next) {
         newStatus = next;
@@ -118,8 +119,7 @@ var logWatcher = (function(){
             var path = filename.indexOf('http://') === 0 ? filename : logURL + filename,
                 cmd = format('curl -s {path} | ./captain.py', {path: path});
 
-            self.check = function() {
-                console.log(cmd);
+            var check = function() {
                 exec(cmd, function(error, stdout, stderr) {
                     if (error) { return console.log(error); }
                     try {
@@ -128,16 +128,19 @@ var logWatcher = (function(){
                     } catch (e) {
                         console.log(e);
                     }
+
+                    if (timeToDie) {
+                        clearInterval(interval);
+                    }
                 });
             };
-            interval = setInterval(self.check, 5 * 1000);
-            self.check();
+            timeToDie = false;
+            interval = setInterval(check, 5 * 1000);
+            check();
         },
         stop: function() {
-            clearInterval(interval);
-            self.check();
             oldStatus = newStatus = {};
-            delete self.check;
+            timeToDie = true;
         },
         stat: function() {
             if (oldStatus.queue) {
