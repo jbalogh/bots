@@ -30,7 +30,7 @@ def main(stream):
                                            elapsed(state['task'][0], date)))
             state['task'] = (date, task)
         elif re.match(r'^(\[[^\]]+\] ){2}', line):
-            host, kind, text = re.search(r'^\[[^\]]+\] \[([^\]]+)\] (\w+):\s*(.*)$', line).groups()
+            date, host, kind, text = re.search(r'^\[([^\]]+)\] \[([^\]]+)\] (\w+):\s*(.*)$', line).groups()
             if kind == 'running':
                 state['queue'][host] = text.strip()
             elif kind == 'finished':
@@ -43,6 +43,8 @@ def main(stream):
             elif kind == 'failed':
                 date, task = state['task']
                 state['failed'].append([date, task, host, text])
+    # Add the final task using whatever date we saw last.
+    state['completed'].append((state['task'][1], elapsed(state['task'][0], date)))
     print json.dumps(state)
 
 
