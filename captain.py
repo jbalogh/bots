@@ -43,8 +43,6 @@ def main(stream):
             elif kind == 'failed':
                 date, task = state['task']
                 state['failed'].append([date, task, host, text])
-    # Add the final task using whatever date we saw last.
-    state['completed'].append((state['task'][1], elapsed(state['task'][0], date)))
     print json.dumps(state)
 
 

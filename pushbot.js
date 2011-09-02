@@ -131,6 +131,7 @@ var logWatcher = (function(){
 
                     if (timeToDie) {
                         clearInterval(interval);
+                        oldStatus = newStatus = {};
                     }
                 });
             };
@@ -139,7 +140,6 @@ var logWatcher = (function(){
             check();
         },
         stop: function() {
-            oldStatus = newStatus = {};
             timeToDie = true;
         },
         stat: function() {
