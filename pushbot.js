@@ -4,6 +4,7 @@ var sys = require('sys'),
     redis_ = require('redis'),
     _ = require('underscore'),
     nomnom = require('nomnom'),
+    request = require('request'),
     format = require('./format').format;
 
 
@@ -39,6 +40,8 @@ var amo = options.channel,
                               {channels: [amo]}),
     redis = redis_.createClient(6382, '10.8.83.29'),
     logURL = 'http://addonsadm.private.phx1.mozilla.com' + options.logs,
+    revisionURL = 'https://addons.mozilla.org/media/git-rev.txt',
+    compareURL = 'https://github.com/mozilla/zamboni/compare/{0}...{1}',
     lastEvent,
     lastEventTime;
 
@@ -68,6 +71,9 @@ function handle(channel, msg) {
                                     'and vendor {vendor}!', msg));
         // If we push origin/master the logfile is name origin.master.
         logWatcher.start(msg.zamboni.replace('/', '.'));
+        request(revisionURL, function(err, response, body) {
+            pushbot.say(channel, format(compareURL, body, msg.zamboni));
+        });
     } else if (msg.event == 'PUSH') {
         pushbot.say(channel, format('the push is now going to the webheads!! ' +
                                     '({zamboni}/{vendor} {who})', msg));
