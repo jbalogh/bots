@@ -67,8 +67,7 @@ pushbot.on('message', function(from, to, message) {
 
 function handle(channel, msg) {
     if (msg.event == 'BEGIN') {
-        pushbot.say(channel, format('listen up, {who} is pushing zamboni {zamboni} ' +
-                                    'and vendor {vendor}!', msg));
+        pushbot.say(channel, format('oh wow, {who} is pushing zamboni {zamboni} ', msg));
         // If we push origin/master the logfile is name origin.master.
         logWatcher.start(msg.zamboni.replace('/', '.'));
         request(revisionURL, function(err, response, body) {
@@ -76,14 +75,13 @@ function handle(channel, msg) {
         });
     } else if (msg.event == 'PUSH') {
         pushbot.say(channel, format('the push is now going to the webheads!! ' +
-                                    '({zamboni}/{vendor} {who})', msg));
+                                    '({zamboni} {who})', msg));
     } else if (msg.event == 'DONE') {
-        pushbot.say(channel, format('{who} pushed zamboni {zamboni} and ' +
-                                    'vendor {vendor}!!!', msg));
+        pushbot.say(channel, format('{who} pushed zamboni {zamboni} and ', msg));
         logWatcher.stop();
     } else if (msg.event == 'FAIL') {
         pushbot.say(channel, format('something terrible happened. check the logs ' +
-                                    '({zamboni}/{vendor} {who})'));
+                                    '({zamboni} {who})'));
         logWatcher.stop();
     }
 }
