@@ -1,4 +1,7 @@
 #!/usr/bin/env python2.6
+"""
+Parse logs from chief. pushbot uses this to talk about log files.
+"""
 from datetime import datetime
 import json
 import re
@@ -7,40 +10,55 @@ import time
 
 
 DATEFMT = '%Y-%m-%d %H:%M:%S'
+TIMESTAMP_RE = r'\[[^\]]+\]'
 
+# The parsed logs are given a bit more structure and thrown into this
+# structure, which eventually gets dumped into json.
 state = {
+    # The currently running task: (timestamp started, task name).
     'task': None,
+    # The shell operations the current task is waiting on: {host: subtask}.
     'queue': {},
+    # List of failed tasks: (timestamp, task name, host, failure text).
     'failed': [],
+    # List of completed tasks: (task name, elapsed time).
     'completed': [],
 }
 
 
 def elapsed(start, stop):
+    """Turn datetime strings into numbers and subtract them."""
     a, b = map(lambda x: time.mktime(datetime.strptime(x, DATEFMT).timetuple()),
                [start, stop])
     return int(b - a)
 
+
+# [2011-09-23 08:03:14] Running pre_update
+TASK_RE = r'^%s Running (.*)' % TIMESTAMP_RE
+# [2011-09-23 08:03:14] [localhost] running: date
+SUBTASK_RE = r'^\[([^\]]+)\] \[([^\]]+)\] (\w+):\s*(.*)$'
+
 def main(stream):
     for line in stream:
-        if re.match('^\[[^\]]+\] Running', line):
-            date, task = re.search('^\[([^\]]+)\] Running (.*)', line).groups()
+        if re.match(TASK_RE, line):
+            date, task = re.search(TASK_RE, line).groups()
+            # Move the existing task to the completed queue.
             if state['task']:
-                state['completed'].append((state['task'][1],
-                                           elapsed(state['task'][0], date)))
+                prev_time, prev_task = state['task']
+                state['completed'].append((prev_task, elapsed(prev_time, date)))
             state['task'] = (date, task)
-        elif re.match(r'^(\[[^\]]+\] ){2}', line):
-            date, host, kind, text = re.search(r'^\[([^\]]+)\] \[([^\]]+)\] (\w+):\s*(.*)$', line).groups()
+        elif re.match(SUBTASK_RE, line):
+            date, host, kind, text = re.search(SUBTASK_RE, line).groups()
             if kind == 'running':
+                # Add it to the list of running subtasks.
                 state['queue'][host] = text.strip()
             elif kind == 'finished':
+                # Remove it from the list of running subtasks.
                 msg, time = re.match('^(.*)\s+\((.*)\)$', text).groups()
                 if state['queue'].get(host).strip() == msg.strip():
                     del state['queue'][host]
-                if host == 'localhost':
-                    pass
-                    #print time, msg
             elif kind == 'failed':
+                # Add it to the list of failed tasks.
                 date, task = state['task']
                 state['failed'].append([date, task, host, text])
     print json.dumps(state)

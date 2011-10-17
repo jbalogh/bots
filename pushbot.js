@@ -31,26 +31,23 @@ var options = nomnom.opts({
         help: "don't tell krupa to check it"
     }
 }).parseArgs();
-
 console.log(options);
 
 var amo = options.channel,
     me = options.name,
-    pushbot = new irc_.Client('irc.mozilla.org', me,
-                              {channels: [amo]}),
+    pushbot = new irc_.Client('irc.mozilla.org', me, {channels: [amo]}),
     redis = redis_.createClient(6382, '10.8.83.29'),
     logURL = 'http://addonsadm.private.phx1.mozilla.com' + options.logs,
     revisionURL = 'https://addons.mozilla.org/media/git-rev.txt',
     compareURL = 'https://github.com/mozilla/zamboni/compare/{0}...{1}';
 
 
+// Pull out messages that look like "<pushbot>: ..." and act on the ... part.
 pushbot.on('message', function(from, to, message) {
     var msg;
     if (msg = RegExp('^' + me + '\\s*:\\s*(.*?)\\s*$').exec(message)) {
         msg = msg[1]
-        if (msg == 'yo') {
-            pushbot.say(to, from + ': ' + 'hey there');
-        } else if (/^st(at|atus)?$/.exec(msg)) {
+        if (/^st(at|atus)?$/.exec(msg)) {
             logWatcher.stat();
         } else if (/f(ail|ailed)?$/.exec(msg)) {
             logWatcher.failed();
@@ -63,9 +60,22 @@ pushbot.on('message', function(from, to, message) {
     }
 });
 
-function handle(channel, msg) {
+// Hook up to chief through pub/sub.
+redis.on('message', function(channel, message) {
+    sys.puts(channel, message);
+    try {
+        chiefSays(amo, JSON.parse(message));
+    } catch (e) {
+        console.log('oops ' + e)
+    }
+});
+redis.subscribe(options.pubsub);
+
+// Handle events chief publishes through redis.
+// It should go BEGIN => PUSH => DONE but a FAIL can interrupt.
+function chiefSays(channel, msg) {
     if (msg.event == 'BEGIN') {
-        pushbot.say(channel, format('oh wow, {who} is pushing zamboni {zamboni} ', msg));
+        pushbot.say(channel, format('hang on, {who} is pushing zamboni {zamboni} ', msg));
         // If we push origin/master the logfile is name origin.master.
         logWatcher.start(msg.zamboni.replace('/', '.'));
         request(revisionURL, function(err, response, body) {
@@ -84,6 +94,7 @@ function handle(channel, msg) {
     }
 }
 
+// All the logic for watching logs from chief and spewing messages about them.
 var logWatcher = (function(){
     var oldStatus = {},
         newStatus = {},
@@ -93,18 +104,22 @@ var logWatcher = (function(){
     var update = function(next) {
         newStatus = next;
         console.log('updating');
+        // Compare the lists of completed tasks.
         if (newStatus.completed && oldStatus.completed) {
             var old = oldStatus.completed, new_ = newStatus.completed;
+            // Figure out if we completed any new tasks.
             if (new_.length > old.length) {
                 var finished = new_.slice(old.length);
                 var f = _.map(finished, function(x) { return format('{0} ({1}s)', x[0], x[1]);})
                 pushbot.say(amo, 'Finished: ' + f.join(', '));
+                // deploy_app means everything is out on the webheads.
                 if (!options.quiet && _.contains(_.map(finished, _.first), 'deploy_app')) {
                     pushbot.say(amo, 'krupa: check it');
                 }
 
             }
         }
+        // Figure out if we have any new failed tasks.
         if (newStatus.failed && oldStatus.failed) {
             var old = oldStatus.failed, new_ = newStatus.failed;
             if (new_.length > old.length) {
@@ -120,8 +135,10 @@ var logWatcher = (function(){
         start: function(filename) {
             var path = filename.indexOf('http://') === 0 ? filename : logURL + filename,
                 cmd = format('curl -s {path} | ./captain.py', {path: path});
-
             pushbot.say('watching ' + path);
+
+            // Pull the logs and parse with captain.py every 5 seconds
+            // to pick up new completed tasks.
             var check = function() {
                 exec(cmd, function(error, stdout, stderr) {
                     if (error) { return console.log(error); }
@@ -132,6 +149,8 @@ var logWatcher = (function(){
                         console.log(e);
                     }
 
+                    // We wait until captain.py goes by once more before stoping
+                    // the loop.
                     if (timeToDie) {
                         clearInterval(interval);
                         oldStatus = newStatus = {};
@@ -166,16 +185,7 @@ var logWatcher = (function(){
 })();
 
 
-redis.on('message', function(channel, message) {
-    sys.puts(channel, message);
-    try {
-        handle(amo, JSON.parse(message));
-    } catch (e) {
-        console.log('oops ' + e)
-    }
-});
-redis.subscribe(options.pubsub);
-
+// Try not to die.
 process.on('uncaughtException', function (err) {
   console.log('Caught exception: ' + err);
 });
