@@ -123,6 +123,7 @@ var logWatcher = (function(){
             var path = filename.indexOf('http://') === 0 ? filename : logURL + filename,
                 cmd = format('curl -s {path} | ./captain.py', {path: path});
 
+            pushbot.say('watching ' + path);
             var check = function() {
                 exec(cmd, function(error, stdout, stderr) {
                     if (error) { return console.log(error); }
@@ -169,9 +170,17 @@ var logWatcher = (function(){
 
 redis.on('message', function(channel, message) {
     sys.puts(channel, message);
-    var msg = JSON.parse(message);
-    lastEvent = msg;
-    lastEventTime = new Date;
-    handle(amo, msg);
+    try {
+        var msg = JSON.parse(message);
+        lastEvent = msg;
+        lastEventTime = new Date;
+        handle(amo, msg);
+    } catch (e) {
+        console.log('oops ' + e)
+    }
 });
 redis.subscribe(options.pubsub);
+
+process.on('uncaughtException', function (err) {
+  console.log('Caught exception: ' + err);
+});
