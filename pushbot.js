@@ -41,9 +41,7 @@ var amo = options.channel,
     redis = redis_.createClient(6382, '10.8.83.29'),
     logURL = 'http://addonsadm.private.phx1.mozilla.com' + options.logs,
     revisionURL = 'https://addons.mozilla.org/media/git-rev.txt',
-    compareURL = 'https://github.com/mozilla/zamboni/compare/{0}...{1}',
-    lastEvent,
-    lastEventTime;
+    compareURL = 'https://github.com/mozilla/zamboni/compare/{0}...{1}';
 
 
 pushbot.on('message', function(from, to, message) {
@@ -171,10 +169,7 @@ var logWatcher = (function(){
 redis.on('message', function(channel, message) {
     sys.puts(channel, message);
     try {
-        var msg = JSON.parse(message);
-        lastEvent = msg;
-        lastEventTime = new Date;
-        handle(amo, msg);
+        handle(amo, JSON.parse(message));
     } catch (e) {
         console.log('oops ' + e)
     }
