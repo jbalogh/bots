@@ -1,49 +1,55 @@
 var sys = require('sys'),
     irc_ = require('irc'),
     redis_ = require('redis'),
-    check = require('./check');
+    request = require('request'),
+    format = require('./format').format;
 
 
 var amo = '#amo',
     amobots = '#amo-bots',
-    NICK = 'gk0bes'
+    NICK = 'amobot'
     irc = new irc_.Client('irc.mozilla.org', NICK,
                           {channels: [amo, amobots]}),
-    jp = new irc_.Client('irc.mozilla.org', 'zalooon',
-                          {channels: ['#flightdeck']}),
-    redis = redis_.createClient(6379, 'mradm02'),
-    repo = 'https://github.com/jbalogh/zamboni';
+    redis = redis_.createClient(6381, '10.8.83.29'),
+    repo = 'https://github.com/mozilla/zamboni',
+    revURL = 'https://addons-dev.allizom.org/media/git-rev.txt',
+    branchesURL = 'https://github.com/api/v2/json/repos/show/mozilla/zamboni/branches';
 
 var channels = {
-    zamboni: [irc, amobots, amo],
+    'zamboni': [irc, amobots, amo],
     'zamboni-lib': [irc, amobots, amo],
-    flightdeck: [jp, '#flightdeck', '#flightdeck'],
 };
 
 
 var updater = {
-    'master': 'https://addons.allizom.org/media/updater.output.txt',
-    'next': 'https://addons-next.allizom.org/media/updater.output.txt'
+    'master': 'https://addons-dev.allizom.org/media/updater.output.txt',
+}
+
+var checkRev = function(cb) {
+    request(branchesURL, function(err, response, body) {
+        var ghRev = JSON.parse(body).branches.master;
+        request(revURL, function(err, response, body) {
+            sys.puts(body, ghRev);
+            cb(body, ghRev);
+        });
+    });
 }
 
 
 irc.on('message', function(from, to, message) {
     if (message == NICK + ': yo') {
-        check.checkRev(function(amo, github) {
-            irc.say(to, from + ': preview is at ' + repo + '/commits/' + amo);
-            if (github.indexOf(amo) != 0) {
-                irc.say(to, from + ': we are behind master! ' + repo + '/compare/' + amo + '...' + github.substring(0, 8));
+        checkRev(function(amo, github) {
+            if (github.indexOf(amo) === 0) {
+                irc.say(to, format('{0}: -dev is at {1}/commits/{2} (up to date)',
+                                   from, repo, amo));
+            } else {
+                irc.say(to, format('{0}: we are behind master! {1}/compare/{2}...{3}',
+                                   from, repo, amo, github.substring(0, 8)));
             }
         });
-    } else if (message == NICK + ': woo') {
-        irc.say(to, from + ': awww yeah');
     }
 });
 irc.on('error', function(msg) {
-    sys.puts('ERROR: ' + msg);
-    sys.puts(JSON.stringify(msg));
-});
-jp.on('error', function(msg) {
     sys.puts('ERROR: ' + msg);
     sys.puts(JSON.stringify(msg));
 });
@@ -81,10 +87,6 @@ redis.on('pmessage', function(pattern, channel, message) {
             var up = updater[msg[3].ref.split('/').pop()];
             bot.say(bad, 'Push failed: ' + updater[branch])
         }
-    } else {
-        var commits = msg.commits,
-            commit = commits[commits.length - 1];
-        // irc.say(amo, 'Pushing ' + msg.compare +  ' by ' + commit.author.username);
     }
 });
 redis.psubscribe('update.*');
