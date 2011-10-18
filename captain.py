@@ -10,7 +10,11 @@ import time
 
 
 DATEFMT = '%Y-%m-%d %H:%M:%S'
-TIMESTAMP_RE = r'\[[^\]]+\]'
+BRACKET_RE = r'\[([^\]]+)\]'
+# [2011-09-23 08:03:14] Running pre_update
+TASK_RE = r'^%s Running (.*)' % BRACKET_RE
+# [2011-09-23 08:03:14] [localhost] running: date
+SUBTASK_RE = r'^%s %s (\w+):\s*(.*)$' % (BRACKET_RE, BRACKET_RE)
 
 # The parsed logs are given a bit more structure and thrown into this
 # structure, which eventually gets dumped into json.
@@ -32,11 +36,6 @@ def elapsed(start, stop):
                [start, stop])
     return int(b - a)
 
-
-# [2011-09-23 08:03:14] Running pre_update
-TASK_RE = r'^%s Running (.*)' % TIMESTAMP_RE
-# [2011-09-23 08:03:14] [localhost] running: date
-SUBTASK_RE = r'^\[([^\]]+)\] \[([^\]]+)\] (\w+):\s*(.*)$'
 
 def main(stream):
     for line in stream:

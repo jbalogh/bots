@@ -85,7 +85,7 @@ function chiefSays(channel, msg) {
         pushbot.say(channel, format('the push is now going to the webheads!! ' +
                                     '({zamboni} {who})', msg));
     } else if (msg.event == 'DONE') {
-        pushbot.say(channel, format('{who} pushed zamboni {zamboni} and ', msg));
+        pushbot.say(channel, format('{who} pushed zamboni {zamboni}', msg));
         logWatcher.stop();
     } else if (msg.event == 'FAIL') {
         pushbot.say(channel, format('something terrible happened. check the logs ' +
@@ -135,7 +135,7 @@ var logWatcher = (function(){
         start: function(filename) {
             var path = filename.indexOf('http://') === 0 ? filename : logURL + filename,
                 cmd = format('curl -s {path} | ./captain.py', {path: path});
-            pushbot.say('watching ' + path);
+            pushbot.say(amo, 'watching ' + path);
 
             // Pull the logs and parse with captain.py every 5 seconds
             // to pick up new completed tasks.
