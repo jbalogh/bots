@@ -1,50 +1,21 @@
-var sys = require('sys'),
+var fs = require('fs'),
+    sys = require('sys'),
+    vm = require('vm'),
     irc_ = require('irc'),
     exec = require('child_process').exec,
     redis_ = require('redis'),
     _ = require('underscore'),
-    nomnom = require('nomnom'),
     request = require('request'),
     format = require('./format').format;
 
+if (process.argv.length < 3) {
+    console.log('Usage: node pushbot.js <config file>');
+    process.exit();
+} else {
+    vm.runInThisContext(fs.readFileSync(process.argv[2]));
+}
 
-var opts = nomnom.opts({
-    channel: {
-        default: '#remora',
-        help: 'irc channel'
-    },
-    name: {
-        default: 'pushbot',
-        help: 'bot name'
-    },
-    pubsub: {
-        default: 'deploy.addons',
-        help: 'redis pubsub channel'
-    },
-    logs: {
-        default: 'http://addonsadm.private.phx1.mozilla.com/chief/addons/logs/',
-        help: 'http path to the chief log directory'
-    },
-    notify: {
-        help: 'who should be notified about the deploy?',
-        list: true,
-    },
-    revision: {
-        default: 'https://addons.mozilla.org/media/git-rev.txt',
-        help: 'http path showing the current revision of the site'
-    },
-    github: {
-        default: 'https://github.com/mozilla/zamboni/',
-        help: 'path to the github repo'
-    },
-    site: {
-        default: 'zamboni',
-        help: "name of the site getting pushed"
-    },
-}).parseArgs();
-console.log(opts);
-
-_.each([opts], botFactory);
+_.each(options, botFactory);
 
 /* Like os.path.join. */
 function join(/* args */) {
@@ -140,7 +111,7 @@ function botFactory(options) {
                     var f = _.map(finished, function(x) { return format('{0} ({1}s)', x[0], x[1]);})
                     pushbot.say(channel, 'Finished: ' + f.join(', '));
                     // deploy_app means everything is out on the webheads.
-                    if (options.notify && _.contains(_.map(finished, _.first), 'deploy_app')) {
+                    if (!_.isEmpty(options.notify) && _.contains(_.map(finished, _.first), 'deploy_app')) {
                         pushbot.say(channel, format('{0}: check it', options.notify.join(': ')));
                     }
 

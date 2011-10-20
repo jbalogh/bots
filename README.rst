@@ -16,34 +16,37 @@ pushbot subscribes to a redis channel and waits for chief to tell it about
 pushes. Then it parses the push logs to tell us what's going on with the push in
 real-time.
 
-Here's all of pushbot's options::
+pushbot is configured with a separate javascript config file. Run it like this::
 
-    options:
-       --channel    irc channel
-       --name       bot name
-       --pubsub     redis pubsub channel
-       --logs       http path to the chief log directory
-       --notify     who should be notified about the deploy?
-       --revision   http path showing the current revision of the site
-       --github     path to the github repo
-       --site       name of the site getting pushed
+    node pushbot.js <config.js>
 
-Since all the defaults are for addons.mozilla.org, just do::
+where config looks like this::
 
-    node pushbot.js --notify=krupa --notify=clouserw
+    options = [
+        {
+            /* IRC channel. */
+            channel: '#amo',
+            /* Bot name. */
+            name: 'pushbot',
+            /* Redis pubsub channel name. */
+            pubsub: 'deploy.addons',
+            /* URL to the chief log directory. */
+            logs: 'http://addonsadm.private.phx1.mozilla.com/chief/addons/logs/',
+            /* List of nicks to notify after the deploy. */
+            notify: ['krupa'],
+            /* URL that shows the current revision of the site. */
+            revision: 'https://addons.mozilla.org/media/git-rev.txt',
+            /* URL to the github repo. */
+            github: 'https://github.com/mozilla/zamboni/',
+            /* Name of the site. */
+            site: 'zamboni'
+        }
+    ]
 
-To run pushbot for addons-stage start it with these options::
-
-    node pushbot.js --channel='#woo'
-                    --name=stagebot
-                    --pubsub=deploy.addons-stage
-                    --logs='http://addonsadm.private.phx1.mozilla.com/chief/addons.stage/logs/'
-                    --notify=jbalogh
-                    --revision='https://addons-stage.allizom.org/media/git-rev.txt'
-                    --github='https://github.com/mozilla/zamboni'
-                    --site='addons-stage'
-
-That's a lot of options! Put it in a script.
+Since pushbot takes an array of objects for configuration, you can watch
+multiple pubsub channels in the same process. Just make sure you give each
+pushbot a different IRC name and pubsub channel. Check out a real config for two
+sites in pushbot-settings.js.
 
 During a push, you can ask pushbot for more details::
 
