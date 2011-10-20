@@ -75,21 +75,21 @@ redis.subscribe(options.pubsub);
 // It should go BEGIN => PUSH => DONE but a FAIL can interrupt.
 function chiefSays(channel, msg) {
     if (msg.event == 'BEGIN') {
-        pushbot.say(channel, format('hang on, {who} is pushing zamboni {zamboni} ', msg));
+        pushbot.say(channel, format('oh god, {who} is pushing zamboni {ref} ', msg));
         // If we push origin/master the logfile is name origin.master.
-        logWatcher.start(msg.zamboni.replace('/', '.'));
+        logWatcher.start(msg.ref.replace('/', '.'));
         request(revisionURL, function(err, response, body) {
-            pushbot.say(channel, format(compareURL, body, msg.zamboni));
+            pushbot.say(channel, format(compareURL, body, msg.ref));
         });
     } else if (msg.event == 'PUSH') {
         pushbot.say(channel, format('the push is now going to the webheads!! ' +
-                                    '({zamboni} {who})', msg));
+                                    '({ref} {who})', msg));
     } else if (msg.event == 'DONE') {
-        pushbot.say(channel, format('{who} pushed zamboni {zamboni}', msg));
+        pushbot.say(channel, format('{who} pushed zamboni {ref}', msg));
         logWatcher.stop();
     } else if (msg.event == 'FAIL') {
         pushbot.say(channel, format('something terrible happened. check the logs ' +
-                                    '({zamboni} {who})'));
+                                    '({ref} {who})', msg));
         logWatcher.stop();
     }
 }
