@@ -6,7 +6,7 @@ Dependencies
 
 ::
 
-    npm install underscore nomnom request
+    npm install irc redis underscore nomnom request
 
 
 pushbot.js
@@ -16,14 +16,34 @@ pushbot subscribes to a redis channel and waits for chief to tell it about
 pushes. Then it parses the push logs to tell us what's going on with the push in
 real-time.
 
-To run it for prod, just do::
+Here's all of pushbot's options::
 
-    node pushbot.js
+    options:
+       --channel    irc channel
+       --name       bot name
+       --pubsub     redis pubsub channel
+       --logs       http path to the chief log directory
+       --notify     who should be notified about the deploy?
+       --revision   http path showing the current revision of the site
+       --github     path to the github repo
+       --site       name of the site getting pushed
+
+Since all the defaults are for addons.mozilla.org, just do::
+
+    node pushbot.js --notify=krupa --notify=clouserw
 
 To run pushbot for addons-stage start it with these options::
 
-    node pushbot.js --name=stagebot --pubsub=deploy.addons-stage
-        --logs=/addons-stage-chief/logs/ --quiet --channel='#stagebot'
+    node pushbot.js --channel='#woo'
+                    --name=stagebot
+                    --pubsub=deploy.addons-stage
+                    --logs='http://addonsadm.private.phx1.mozilla.com/chief/addons.stage/logs/'
+                    --notify=jbalogh
+                    --revision='https://addons-stage.allizom.org/media/git-rev.txt'
+                    --github='https://github.com/mozilla/zamboni'
+                    --site='addons-stage'
+
+That's a lot of options! Put it in a script.
 
 During a push, you can ask pushbot for more details::
 

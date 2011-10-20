@@ -22,14 +22,25 @@ var options = nomnom.opts({
         help: 'redis pubsub channel'
     },
     logs: {
-        default: '/addons-chief/logs/',
-        help: 'relative path to the chief logs'
+        default: 'http://addonsadm.private.phx1.mozilla.com/chief/addons/logs/',
+        help: 'http path to the chief log directory'
     },
-    quiet: {
-        flag: true,
-        default: false,
-        help: "don't tell krupa to check it"
-    }
+    notify: {
+        help: 'who should be notified about the deploy?',
+        list: true,
+    },
+    revision: {
+        default: 'https://addons.mozilla.org/media/git-rev.txt',
+        help: 'http path showing the current revision of the site'
+    },
+    github: {
+        default: 'https://github.com/mozilla/zamboni/',
+        help: 'path to the github repo'
+    },
+    site: {
+        default: 'zamboni',
+        help: "name of the site getting pushed"
+    },
 }).parseArgs();
 console.log(options);
 
@@ -37,9 +48,19 @@ var amo = options.channel,
     me = options.name,
     pushbot = new irc_.Client('irc.mozilla.org', me, {channels: [amo]}),
     redis = redis_.createClient(6382, '10.8.83.29'),
-    logURL = 'http://addonsadm.private.phx1.mozilla.com' + options.logs,
-    revisionURL = 'https://addons.mozilla.org/media/git-rev.txt',
-    compareURL = 'https://github.com/mozilla/zamboni/compare/{0}...{1}';
+    logURL = options.logs,
+    revisionURL = options.revision,
+    compareURL = join(options.github, 'compare/{0}...{1}');
+
+
+/* Like os.path.join. */
+function join(/* args */) {
+    return _.reduce(_.tail(arguments), function(a, b) {
+        a = a[a.length - 1] == '/' ? a : a + '/';
+        b = b[0] == '/' ? b.substring(1) : b;
+        return a + b;
+    }, _.head(arguments));
+}
 
 
 // Pull out messages that look like "<pushbot>: ..." and act on the ... part.
@@ -60,6 +81,7 @@ pushbot.on('message', function(from, to, message) {
     }
 });
 
+
 // Hook up to chief through pub/sub.
 redis.on('message', function(channel, message) {
     sys.puts(channel, message);
@@ -71,11 +93,13 @@ redis.on('message', function(channel, message) {
 });
 redis.subscribe(options.pubsub);
 
+
 // Handle events chief publishes through redis.
 // It should go BEGIN => PUSH => DONE but a FAIL can interrupt.
 function chiefSays(channel, msg) {
+    msg = _.extend(msg, options);
     if (msg.event == 'BEGIN') {
-        pushbot.say(channel, format('oh god, {who} is pushing zamboni {ref} ', msg));
+        pushbot.say(channel, format('oh god, {who} is pushing {site} {ref} ', msg));
         // If we push origin/master the logfile is name origin.master.
         logWatcher.start(msg.ref.replace('/', '.'));
         request(revisionURL, function(err, response, body) {
@@ -85,7 +109,7 @@ function chiefSays(channel, msg) {
         pushbot.say(channel, format('the push is now going to the webheads!! ' +
                                     '({ref} {who})', msg));
     } else if (msg.event == 'DONE') {
-        pushbot.say(channel, format('{who} pushed zamboni {ref}', msg));
+        pushbot.say(channel, format('{who} pushed {site} {ref}', msg));
         logWatcher.stop();
     } else if (msg.event == 'FAIL') {
         pushbot.say(channel, format('something terrible happened. check the logs ' +
@@ -113,8 +137,8 @@ var logWatcher = (function(){
                 var f = _.map(finished, function(x) { return format('{0} ({1}s)', x[0], x[1]);})
                 pushbot.say(amo, 'Finished: ' + f.join(', '));
                 // deploy_app means everything is out on the webheads.
-                if (!options.quiet && _.contains(_.map(finished, _.first), 'deploy_app')) {
-                    pushbot.say(amo, 'krupa: check it');
+                if (options.notify && _.contains(_.map(finished, _.first), 'deploy_app')) {
+                    pushbot.say(amo, format('{0}: check it', options.notify.join(': ')));
                 }
 
             }
@@ -133,7 +157,7 @@ var logWatcher = (function(){
 
     var self = {
         start: function(filename) {
-            var path = filename.indexOf('http://') === 0 ? filename : logURL + filename,
+            var path = filename.indexOf('http') === 0 ? filename : join(logURL, filename),
                 cmd = format('curl -s {path} | ./captain.py', {path: path});
             pushbot.say(amo, 'watching ' + path);
 
