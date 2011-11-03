@@ -31,7 +31,7 @@ function botFactory(options) {
     var channel = options.channel,
         me = options.name,
         pushbot = new irc_.Client('irc.mozilla.org', me, {channels: [channel]}),
-        redis = redis_.createClient(6382, '10.8.83.29'),
+        redis = null,
         logURL = options.logs,
         revisionURL = options.revision,
         compareURL = join(options.github, 'compare/{0}...{1}');
@@ -54,18 +54,25 @@ function botFactory(options) {
         }
     });
 
-
-    // Hook up to chief through pub/sub.
-    redis.on('message', function(pubsubChannel, message) {
-        sys.puts(pubsubChannel, message);
-        try {
-            chiefSays(JSON.parse(message));
-        } catch (e) {
-            console.log('oops ' + e)
+    (function startRedis() {
+        if (redis) {
+            redis.end();
         }
-    });
-    redis.subscribe(options.pubsub);
-
+        redis = redis_.createClient(6382, '10.8.83.29');
+        // Hook up to chief through pub/sub.
+        redis.on('message', function(pubsubChannel, message) {
+            sys.puts(pubsubChannel, message);
+            try {
+                chiefSays(JSON.parse(message));
+            } catch (e) {
+                console.log('oops ' + e)
+            }
+        });
+        redis.subscribe(options.pubsub);
+        // Reset this every 5 minutes because we appear to lose the connection
+        // all the time.
+        setTimeout(startRedis, 1000 * 5 * 60);
+    })();
 
     // Handle events chief publishes through redis.
     // It should go BEGIN => PUSH => DONE but a FAIL can interrupt.
