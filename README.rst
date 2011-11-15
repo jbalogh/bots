@@ -28,6 +28,8 @@ where config looks like this::
             channel: '#amo',
             /* Bot name. */
             name: 'pushbot',
+            /* Redis host:port */
+            redis: 'localhost:6379',
             /* Redis pubsub channel name. */
             pubsub: 'deploy.addons',
             /* URL to the chief log directory. */
