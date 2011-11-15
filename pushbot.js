@@ -58,7 +58,8 @@ function botFactory(options) {
         if (redis) {
             redis.end();
         }
-        redis = redis_.createClient(6382, '10.8.83.29');
+        var r = options.redis.split(':')
+        redis = redis_.createClient(Number(r[1]), r[0]);
         // Hook up to chief through pub/sub.
         redis.on('message', function(pubsubChannel, message) {
             sys.puts(pubsubChannel, message);
