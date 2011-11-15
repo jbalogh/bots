@@ -17,7 +17,7 @@ var options = [
         /* URL to the github repo. */
         github: 'https://github.com/mozilla/zamboni/',
         /* Name of the site. */
-        site: 'zamboni',
+        site: 'zamboni'
     },
     {
         channel: '#remora',
