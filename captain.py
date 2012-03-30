@@ -8,7 +8,6 @@ import re
 import sys
 import time
 
-
 DATEFMT = '%Y-%m-%d %H:%M:%S'
 BRACKET_RE = r'\[([^\]]+)\]'
 # [2011-09-23 08:03:14] Running pre_update
@@ -54,8 +53,11 @@ def main(stream):
             elif kind == 'finished':
                 # Remove it from the list of running subtasks.
                 msg, time = re.match('^(.*)\s+\((.*)\)$', text).groups()
-                if state['queue'].get(host).strip() == msg.strip():
-                    del state['queue'][host]
+                try: 
+                    if state['queue'].get(host).strip() == msg.strip():
+                        del state['queue'][host]
+                except AttributeError:
+                    pass
             elif kind == 'failed':
                 # Add it to the list of failed tasks.
                 date, task = state['task']

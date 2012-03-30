@@ -140,13 +140,12 @@ function botFactory(options) {
         var self = {
             start: function(filename) {
                 var path = filename.indexOf('http') === 0 ? filename : join(logURL, filename),
-                    cmd = format('curl -s {path} | ./captain.py', {path: path});
+                    cmd = './captain.py';
                 pushbot.say(channel, 'watching ' + path);
-
                 // Pull the logs and parse with captain.py every 5 seconds
                 // to pick up new completed tasks.
                 var check = function() {
-                    exec(cmd, function(error, stdout, stderr) {
+                    captain = exec(cmd, function(error, stdout, stderr) {
                         if (error) { return console.log(error); }
                         try {
                             console.log(stdout);
@@ -161,6 +160,10 @@ function botFactory(options) {
                             clearInterval(interval);
                             oldStatus = newStatus = {};
                         }
+                    });
+                    request(path, function(err, response, body) {
+                        captain.stdin.write(body);
+                        captain.stdin.end();
                     });
                 };
                 timeToDie = false;
