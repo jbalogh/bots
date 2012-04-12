@@ -4,7 +4,8 @@
     "version": "0.1.2",
     "author": "Jeff Balogh <jbalogh@mozilla.com>",
     "contributors": [
-        "James Socol <james@mozilla.com>"
+        "James Socol <james@mozilla.com>",
+        "Jeremiah Orem <oremj@mozilla.com>"
     ],
     "repository": {
         "type": "git",
