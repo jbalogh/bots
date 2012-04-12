@@ -6,6 +6,7 @@ var fs = require('fs'),
     redis_ = require('redis'),
     _ = require('underscore'),
     request = require('request'),
+    parselog = require('./captain').parselog,
     format = require('./format').format;
 
 if (process.argv.length < 3) {
@@ -109,7 +110,7 @@ function botFactory(options) {
 
         var update = function(next) {
             newStatus = next;
-            console.log('updating');
+            //console.log('updating');
             // Compare the lists of completed tasks.
             if (newStatus.completed && oldStatus.completed) {
                 var old = oldStatus.completed, new_ = newStatus.completed;
@@ -139,31 +140,17 @@ function botFactory(options) {
 
         var self = {
             start: function(filename) {
-                var path = filename.indexOf('http') === 0 ? filename : join(logURL, filename),
-                    cmd = './captain.py';
+                var path = filename.indexOf('http') === 0 ? filename : join(logURL, filename);
                 pushbot.say(channel, 'watching ' + path);
                 // Pull the logs and parse with captain.py every 5 seconds
                 // to pick up new completed tasks.
                 var check = function() {
-                    captain = exec(cmd, function(error, stdout, stderr) {
-                        if (error) { return console.log(error); }
-                        try {
-                            console.log(stdout);
-                            update(JSON.parse(stdout));
-                        } catch (e) {
-                            console.log(e);
-                        }
-
-                        // We wait until captain.py goes by once more before stoping
-                        // the loop.
+                    request(path, function(err, response, body) {
+                        update(parselog(body));
                         if (timeToDie) {
                             clearInterval(interval);
                             oldStatus = newStatus = {};
                         }
-                    });
-                    request(path, function(err, response, body) {
-                        captain.stdin.write(body);
-                        captain.stdin.end();
                     });
                 };
                 timeToDie = false;
