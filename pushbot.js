@@ -121,7 +121,7 @@ function botFactory(options) {
                     pushbot.say(channel, 'Finished: ' + f.join(', '));
                     // deploy_app means everything is out on the webheads.
                     if (!_.isEmpty(options.notify) && _.contains(_.map(finished, _.first), 'deploy_app')) {
-                        pushbot.say(channel, format('{0}: check it', options.notify.join(': ')));
+                        pushbot.say(channel, format('{0}: check it, please', options.notify.join(': ')));
                     }
 
                 }
