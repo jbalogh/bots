@@ -84,7 +84,7 @@ function botFactory(options) {
         if (msg.event == 'BEGIN') {
             pushbot.say(channel, format(m + ', {who} is pushing {site} {ref} ', msg));
             // If we push origin/master the logfile is name origin.master.
-            logWatcher.start(msg.ref.replace('/', '.'));
+            logWatcher.start(msg.logname.replace('/', '.'));
             request(revisionURL, function(err, response, body) {
                 pushbot.say(channel, format(compareURL, body, msg.ref));
             });
