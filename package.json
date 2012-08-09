@@ -1,7 +1,7 @@
 {
     "name": "pushbots",
     "description": "IRC bots to go with Chief/Freddo",
-    "version": "0.1.4",
+    "version": "0.1.5",
     "author": "Jeff Balogh <jbalogh@mozilla.com>",
     "contributors": [
         "James Socol <james@mozilla.com>",
