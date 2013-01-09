@@ -9,7 +9,9 @@ var amo = '#amo',
     amobots = '#amo-bots',
     NICK = 'amobot'
     irc = new irc_.Client('irc.mozilla.org', NICK,
-                          {channels: [amo, amobots]}),
+                          {channels: [amo, amobots]
+                           port: 6697,
+                           secure: true}),
     redis = redis_.createClient(6381, '10.8.83.29'),
     repo = 'https://github.com/mozilla/zamboni',
     revURL = 'https://addons-dev.allizom.org/media/git-rev.txt',

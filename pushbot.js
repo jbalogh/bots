@@ -31,7 +31,9 @@ function join(/* args */) {
 function botFactory(options) {
     var channel = options.channel,
         me = options.name,
-        pushbot = new irc_.Client('irc.mozilla.org', me, {channels: [channel]}),
+        pushbot = new irc_.Client('irc.mozilla.org', me, {channels: [channel],
+                                                          port: 6697,
+                                                          secure: true}),
         redis = null,
         logURL = options.logs,
         revisionURL = options.revision,
