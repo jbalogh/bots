@@ -148,7 +148,9 @@ function botFactory(options) {
                 // to pick up new completed tasks.
                 var check = function() {
                     request(path, function(err, response, body) {
-                        update(parselog(body));
+                        if(body) {
+                            update(parselog(body));
+                        }
                         if (timeToDie) {
                             clearInterval(interval);
                             oldStatus = newStatus = {};
